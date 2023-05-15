@@ -144,13 +144,13 @@ private:
       }
 
       // send goal to ROS2 server, set-up feedback
-      auto gh2_future = client_->async_send_goal(goal2,
-          [this](ROS2GoalHandle, auto feedback2) {
-            ROS1Feedback feedback1;
-            translate_feedback_2_to_1(feedback1, *feedback2);
-            gh1_.publishFeedback(feedback1);
-          }
-      );
+      typename rclcpp_action::Client<ROS2_T>::SendGoalOptions send_goal_options {};
+      send_goal_options.feedback_callback = [this](ROS2GoalHandle, auto feedback2) {
+        ROS1Feedback feedback1;
+        translate_feedback_2_to_1(feedback1, *feedback2);
+        gh1_.publishFeedback(feedback1);
+      };
+      auto gh2_future = client_->async_send_goal(goal2, send_goal_options);
 
       auto goal_handle = gh2_future.get();
       if (!goal_handle) {
@@ -172,7 +172,7 @@ private:
       auto res2 = client_->async_get_result(gh2_).get();
 
       ROS1Result res1;
-      translate_result_2_to_1(res1, *res2.response);
+      translate_result_2_to_1(res1, *res2.result);
 
       std::lock_guard<std::mutex> lock(mutex_);
       if (res2.code == rclcpp_action::ResultCode::SUCCEEDED) {
